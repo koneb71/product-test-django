@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate && python manage.py prepopulate_products && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    networks:
+      - product_test_network
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A product_test worker --loglevel=info
+    volumes:
+      - .:/code
+    depends_on:
+      - web
+      - redis
+    networks:
+      - product_test_network
+
+  redis:
+    image: "redis:latest"
+    hostname: redisserver
+    ports:
+      - "6379:6379"
+    networks:
+      - product_test_network
+  mailhog:
+    hostname: mailhog_server
+    image: mailhog/mailhog:latest
+    networks:
+      - product_test_network
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+networks:
+  product_test_network:
+    driver: bridge
